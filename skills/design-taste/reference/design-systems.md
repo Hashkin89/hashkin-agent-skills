@@ -63,6 +63,7 @@ After the design read, set three dials. Every layout, motion, and density decisi
 | Portfolio (Developer) | 6 | 5 | 4 |
 | Editorial / Blog | 6 | 4 | 3 |
 | Public-sector service | 3 | 2 | 5 |
+| Product UI / dashboard (Operate) | 3-5 | 3-4 | 5-7 |
 | Redesign - preserve | match | match+1 | match |
 | Redesign - overhaul | +2 | +2 | match |
 
@@ -86,7 +87,7 @@ Once you have the design read (Section 0) and dials (Section 1), pick the right 
 | Atlassian / Jira-style product | `@atlaskit/*` + `@atlaskit/tokens` | Official Atlassian DS |
 | GitHub-style devtool / community page | `@primer/css` or `@primer/react-brand` | Official Primer; Brand variant for marketing |
 | Public-sector UK service | `govuk-frontend` | Legally / regulatorily expected |
-| US public-sector / trust-first | `uswds` | Same |
+| US public-sector / trust-first | `@uswds/uswds` | Same |
 | Fast local-business / agency MVP | Bootstrap 5.3 | Boring, fast, works |
 | Modern accessible React foundation | `@radix-ui/themes` | Primitives + polished theme |
 | Modern SaaS where you own the components | shadcn/ui (`npx shadcn@latest add ...`) | You own the code, easy to customise; never ship default state |
@@ -116,7 +117,7 @@ For these directions, there is **no single official package**. Build with native
 
 ## 3. DEFAULT ARCHITECTURE & CONVENTIONS
 
-Unless the design read picks a real design system (Section 2.A), these are the defaults:
+Unless the design read picks a real design system (Section 2.A), these are the defaults when the brief is a React/Next app. For a different stack, translate the same conventions (styling approach, animation library, icon set) to that framework.
 
 ### 3.A Stack
 * **Framework:** React or Next.js. Default to Server Components (RSC).
@@ -134,7 +135,7 @@ Unless the design read picks a real design system (Section 2.A), these are the d
 
 ### 3.C Icons
 * **Allowed libraries (priority order):** `@phosphor-icons/react`, `hugeicons-react`, `@radix-ui/react-icons`, `@tabler/icons-react`.
-* **Discouraged:** `lucide-react`. Acceptable only when the user explicitly asks for it or the project already depends on it.
+* **Discouraged:** `lucide-react`. Acceptable only when the user explicitly asks for it or the project already depends on it. shadcn/ui projects keep `lucide-react` as the single icon family.
 * **NEVER hand-roll SVG icons.** If a glyph is missing, install a second library or compose from primitives - do not draw icon paths from scratch.
 * **One family per project.** Do not mix Phosphor with Lucide in the same component tree.
 * **Standardize `strokeWidth` globally** (e.g. `1.5` or `2.0`).
@@ -153,32 +154,9 @@ Before importing ANY 3rd-party library, check `package.json`. If the package is 
 
 ---
 
----
+## 5. SCROLL CHOREOGRAPHY (Canonical Skeletons)
 
-## 7. DIAL DEFINITIONS (Technical Reference)
-
-### DESIGN_VARIANCE (Level 1-10)
-* **1-3 (Predictable):** Symmetrical CSS Grid (12-col, equal fr-units), equal paddings, centered alignment.
-* **4-7 (Offset):** `margin-top: -2rem` overlaps, varied image aspect ratios (4:3 next to 16:9), left-aligned headers over center-aligned data.
-* **8-10 (Asymmetric):** Masonry layouts, CSS Grid with fractional units (`grid-template-columns: 2fr 1fr 1fr`), massive empty zones (`padding-left: 20vw`).
-* **MOBILE OVERRIDE:** For levels 4-10, asymmetric layouts above `md:` MUST collapse to strict single-column (`w-full`, `px-4`, `py-8`) on viewports `< 768px`.
-
-### MOTION_INTENSITY (Level 1-10)
-* **1-3 (Static):** No automatic animations. CSS `:hover` and `:active` states only. `prefers-reduced-motion` is the default mode anyway.
-* **4-7 (Fluid CSS):** `transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1)`. `animation-delay` cascades for load-ins. Focus on `transform` and `opacity`.
-* **8-10 (Advanced Choreography):** Complex scroll-triggered reveals, parallax, scroll-driven animation (CSS `animation-timeline` or GSAP ScrollTrigger). Use Motion hooks. **NEVER use `window.addEventListener('scroll')`** - it is a hard ban, not a "prefer-not." See Section 5.D for the allowed alternatives.
-
-### VISUAL_DENSITY (Level 1-10)
-* **1-3 (Art Gallery):** Lots of white space. Huge section gaps (`py-32` to `py-48`). Expensive, clean.
-* **4-7 (Daily App):** Standard web app spacing (`py-16` to `py-24`).
-* **8-10 (Cockpit):** Tight paddings. No card boxes; 1px lines separate data. Mandatory: `font-mono` for all numbers.
-
----
-
----
-
-## Scroll Choreography — Canonical Skeletons
-
+### 5.A Sticky-Stack - Canonical Skeleton
 
 ```tsx
 "use client";
@@ -199,14 +177,6 @@ export function StickyStack({ cards }: { cards: React.ReactNode[] }) {
       const cardEls = gsap.utils.toArray<HTMLElement>(".stack-card");
       cardEls.forEach((card, i) => {
         if (i === cardEls.length - 1) return;
-        ScrollTrigger.create({
-          trigger: card,
-          start: "top top",                              // pin at viewport top
-          endTrigger: cardEls[cardEls.length - 1],
-          end: "top top",
-          pin: true,
-          pinSpacing: false,
-        });
         gsap.to(card, {
           scale: 0.92,
           opacity: 0.55,
@@ -238,7 +208,7 @@ export function StickyStack({ cards }: { cards: React.ReactNode[] }) {
 }
 ```
 
-Critical points: `start: "top top"`, `pin: true`, every card except the last is pinned, the scale/opacity transform is driven by the NEXT card's scroll trigger (so previous card shrinks as next one arrives).
+Critical points: CSS `sticky top-0` handles the pin (no GSAP `pin`, no standalone `ScrollTrigger.create`), and the scale/opacity transform on each card is driven by the NEXT card's scroll trigger (`start: "top bottom"`, `end: "top top"`, `scrub: true`), so the previous card shrinks as the next one arrives.
 
 ### 5.B Horizontal-Pan - Canonical Skeleton
 
@@ -322,6 +292,86 @@ export function RevealStagger({ items }: { items: string[] }) {
 
 Use this for: feature lists, testimonial grids, logo walls, anything that just needs "enter on scroll." Save GSAP for actual pin/scrub work.
 
+### 5.D Forbidden Animation Patterns
+
+* **`window.addEventListener("scroll", ...)`** is banned. It runs on every scroll frame, jank-prone, no batching. Use Motion's `useScroll()`, GSAP's `ScrollTrigger`, IntersectionObserver, or CSS `scroll-driven animations` (`animation-timeline: view()`).
+* **Custom scroll progress calculations using `window.scrollY`** in React state. Same reason. Re-renders on every frame.
+* **`requestAnimationFrame` loops that touch React state.** Use motion values (`useMotionValue` + `useTransform`) instead.
+* **Layout Transitions:** Use Motion's `layout` and `layoutId` props for visible state changes (re-ordering lists, expanding modals, shared elements between routes). Do not wrap static content in `layout` props "for safety" - it costs measurement work.
+* **Staggered Orchestration:** Use `staggerChildren` (Motion) or CSS cascade (`animation-delay: calc(var(--index) * 100ms)`) for reveal moments where sequence matters. For `staggerChildren`, parent (`variants`) and children MUST share the same Client Component tree.
+
+---
+
+## 7. DIAL DEFINITIONS (Technical Reference)
+
+### DESIGN_VARIANCE (Level 1-10)
+* **1-3 (Predictable):** Symmetrical CSS Grid (12-col, equal fr-units), equal paddings, centered alignment.
+* **4-7 (Offset):** `margin-top: -2rem` overlaps, varied image aspect ratios (4:3 next to 16:9), left-aligned headers over center-aligned data.
+* **8-10 (Asymmetric):** Masonry layouts, CSS Grid with fractional units (`grid-template-columns: 2fr 1fr 1fr`), massive empty zones (`padding-left: 20vw`).
+* **MOBILE OVERRIDE:** For levels 4-10, asymmetric layouts above `md:` MUST collapse to strict single-column (`w-full`, `px-4`, `py-8`) on viewports `< 768px`.
+
+### MOTION_INTENSITY (Level 1-10)
+* **1-3 (Static):** No automatic animations. CSS `:hover` and `:active` states only. `prefers-reduced-motion` is the default mode anyway.
+* **4-7 (Fluid CSS):** `transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1)`. `animation-delay` cascades for load-ins. Focus on `transform` and `opacity`.
+* **8-10 (Advanced Choreography):** Complex scroll-triggered reveals, parallax, scroll-driven animation (CSS `animation-timeline` or GSAP ScrollTrigger). Use Motion hooks. **NEVER use `window.addEventListener('scroll')`** - it is a hard ban, not a "prefer-not." See Section 5.D for the allowed alternatives.
+
+### VISUAL_DENSITY (Level 1-10)
+* **1-3 (Art Gallery):** Lots of white space. Huge section gaps (`py-32` to `py-48`). Expensive, clean.
+* **4-7 (Daily App):** Standard web app spacing (`py-16` to `py-24`).
+* **8-10 (Cockpit):** Tight paddings. No card boxes; 1px lines separate data. Mandatory: `font-mono` for all numbers.
+
+---
+
+## 11. REDESIGN PROTOCOL
+
+This skill handles **greenfield builds AND redesigns**. Misclassifying the mode is the single biggest source of bad redesign output.
+
+### 11.A Detect the Mode (first action)
+* **Greenfield** - no existing site, or full overhaul approved. Dial baseline from Section 1.
+* **Redesign - Preserve** - modernise without breaking the brand. Audit first, extract brand tokens, evolve gradually.
+* **Redesign - Overhaul** - new visual language on top of existing content. Treat as greenfield for visuals; preserve content and IA.
+
+If ambiguous, ask **once**: *"Should this redesign preserve the existing brand, or are we starting visually from scratch?"*
+
+### 11.B Audit Before Touching
+Document the current state before proposing changes:
+* **Brand tokens** - primary / accent colors, type stack, logo treatment, radii.
+* **Information architecture** - page tree, primary nav, key conversion paths.
+* **Content blocks** - what exists, what's doing work, what's filler.
+* **Patterns to preserve** - signature interactions, recognisable hero, copy voice.
+* **Patterns to retire** - AI-slop tells, broken layouts, dead links, generic stock imagery, perf traps.
+* **Dial reading of the existing site** - infer current `DESIGN_VARIANCE` / `MOTION_INTENSITY` / `VISUAL_DENSITY`. That's your starting point, not the baseline.
+* **SEO baseline** - current ranking pages, meta titles, structured data, OG cards. **SEO migration is the #1 redesign risk.**
+
+### 11.C Preservation Rules
+* **Do not change information architecture** unless asked. Keep page slugs, anchor IDs, primary nav labels stable for SEO and muscle memory.
+* **Extract brand colors before applying Section 4.2.** A brand that is already purple stays purple - apply the LILA RULE's override.
+* **Preserve copy voice** unless asked for a rewrite. Visual modernisation ≠ content rewrite.
+* **Honor existing accessibility wins.** Do not regress focus states, alt text, keyboard nav, contrast.
+* **Respect existing analytics events.** Do not rename buttons, form fields, section IDs that downstream tracking depends on.
+
+### 11.D Modernisation Levers (priority order)
+Apply in order - stop when the brief is satisfied:
+1. **Typography refresh** - biggest visual lift per unit of risk.
+2. **Spacing & rhythm** - increase section padding, fix vertical rhythm.
+3. **Color recalibration** - desaturate, unify neutrals, keep brand accent.
+4. **Motion layer** - add `MOTION_INTENSITY`-appropriate micro-interactions to existing components.
+5. **Hero & key-section recomposition** - restructure top-of-funnel using `reference/pre-flight.md`'s Addendum: Persuade hero boxes.
+6. **Full block replacement** - only when the existing block is unsalvageable.
+
+### 11.E Decision Tree: Targeted Evolution vs Full Redesign
+* IA, content, and SEO sound → **targeted evolution** (Levers 1-4). ~70% of value at ~40% of risk.
+* Visual debt is structural (broken IA, no design system, broken mobile) → **full redesign** with strict content preservation.
+* Brand itself is changing → **greenfield**.
+
+### 11.F What Never Changes Silently
+Never modify without explicit user approval:
+* URL structure / route slugs.
+* Primary nav labels.
+* Form field names or order (breaks analytics + autofill).
+* Brand logo or wordmark.
+* Existing legal / consent / cookie copy.
+
 ---
 
 ## Install Commands per Design System
@@ -356,7 +406,7 @@ npm install @primer/react-brand
 npm install govuk-frontend
 
 # USWDS (US Web Design System)
-npm install uswds
+npm install @uswds/uswds
 
 # Atlassian Design System (Atlaskit)
 yarn add @atlaskit/css-reset @atlaskit/tokens @atlaskit/button @atlaskit/badge @atlaskit/section-message @atlaskit/card
