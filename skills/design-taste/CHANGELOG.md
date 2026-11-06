@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.1.1] - 2026-11-06
+
+### Added
+
+- `reference/pre-flight.md` Addendum: Operate: **Data readability** box. Check the screen with real, messy data; never show raw third-party text (parse it, strip platform noise, separate metadata from content); never truncate without a way to read everything; reuse an existing renderer for the same data. Added after a LinkedIn thread was shown as one raw block with its headers glued to the message.
+
 ## [2.1.0] - 2026-09-25
 
 ### Added

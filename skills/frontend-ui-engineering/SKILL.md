@@ -239,6 +239,15 @@ function TaskList({ tasks }: { tasks: Task[] }) {
 }
 ```
 
+### Readable Data, Not Raw Data
+
+Interfaces mostly show data the developer didn't write: imported records, emails, scraped pages, chat threads, logs. Treat its display as a design task, not a dump.
+
+- **Parse before you print.** Text that comes from another platform (a LinkedIn thread, an email with quoted history, an API payload) is cleaned and split first. Strip the source's interface noise ("TODAY … sent the following messages at … View X's profile", "Press return to…"), split it into items (one message, one entry), and keep what the user cares about.
+- **Metadata is not content.** Author, date, channel and status go on their own line, smaller and muted, above or beside the content, never glued into the same paragraph.
+- **Never truncate without a way out.** `line-clamp` or a preview is fine only with a "Voir tout" / expand control or a scroll area, and the truncation must never hide who or when.
+- **One renderer per data type.** Before writing a display for a kind of data, search the codebase for an existing component that already renders it well; reuse or extract it into a shared component rather than writing a second, cruder version.
+
 ## Responsive Design
 
 Design for mobile first, then expand:
@@ -314,6 +323,9 @@ For detailed accessibility requirements and testing tools, see `../../references
 - No keyboard navigation testing
 - Color as the sole indicator of state (red/green without text or icons)
 - Generic "AI look" (purple gradients, oversized cards, stock layouts)
+- Raw third-party text dumped on screen (platform headers glued to the message, quoted history, `TODAY … sent the following messages`)
+- `line-clamp` or `slice()` on content with no expand control
+- A second component rendering the same data type differently from an existing one
 
 ## Verification
 
@@ -326,3 +338,4 @@ After building UI:
 - [ ] Loading, error, and empty states all handled
 - [ ] Follows the project's design system (spacing, colors, typography)
 - [ ] No accessibility warnings in dev tools or axe-core
+- [ ] Checked on screen with real data, including the longest and messiest real record: every string reads cleanly, metadata is separated from content, nothing is cut off without a way to see it all
